@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 提示词优化对比与评估</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button.compare-btn { grid-column: span 2; padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .result-box { padding: 15px; border-radius: 8px; background-color: #e9ecef; white-space: pre-wrap; min-height: 200px; margin-bottom: 10px; }
+        .rating-btns { display: flex; gap: 10px; }
+        .rating-btns button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>提示词优化对比测试</h1>
+        <div class="grid">
+            <div>
+                <h3>优化前 (Baseline)</h3>
+                <textarea id="prompt1" placeholder="原始提示词"></textarea>
+                <div id="result1" class="result-box"></div>
+                <div class="rating-btns">
+                    <button onclick="rate('baseline', 'bad')">👎 不好</button>
+                    <button onclick="rate('baseline', 'good')">👍 好</button>
+                </div>
+            </div>
+            <div>
+                <h3>优化后 (Optimized)</h3>
+                <textarea id="prompt2" placeholder="优化后的提示词"></textarea>
+                <div id="result2" class="result-box"></div>
+                <div class="rating-btns">
+                    <button onclick="rate('optimized', 'bad')">👎 不好</button>
+                    <button onclick="rate('optimized', 'good')">👍 好</button>
+                </div>
+            </div>
+            <button class="compare-btn" onclick="compare()">执行对比测试</button>
+        </div>
+    </div>
+
+    <script>
+        async function fetchAI(prompt) {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt, model: "qwen-max" })
+            });
+            const data = await response.json();
+            return data.result || data.detail;
+        }
+
+        async function compare() {
+            document.getElementById('result1').innerText = "思考中...";
+            document.getElementById('result2').innerText = "思考中...";
+
+            const p1 = document.getElementById('prompt1').value;
+            const p2 = document.getElementById('prompt2').value;
+
+            const [r1, r2] = await Promise.all([fetchAI(p1), fetchAI(p2)]);
+
+            document.getElementById('result1').innerText = r1;
+            document.getElementById('result2').innerText = r2;
+        }
+
+        async function rate(type, score) {
+            const prompt = document.getElementById(type === 'baseline' ? 'prompt1' : 'prompt2').value;
+            const response = document.getElementById(type === 'baseline' ? 'result1' : 'result2').innerText;
+            
+            const payload = { prompt, response, type, score };
+            
+            const res = await fetch('/rate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+                alert(`已记录: ${type} 版本 - ${score === 'good' ? '好评' : '差评'}`);
+            } else {
+                alert("记录评价失败");
+            }
+        }
+    </script>
+</body>
+</html>
+
